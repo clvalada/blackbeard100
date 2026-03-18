@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>OBX 100 — Race Tracker</title>
+<style>
+:root {
+  --green:#1D9E75;--green-bg:#E1F5EE;--green-dk:#0F6E56;
+  --blue:#185FA5;--blue-bg:#E6F1FB;--blue-dk:#0C447C;
+  --purple:#534AB7;--purple-bg:#EEEDFE;
+  --coral:#993C1D;--coral-bg:#FAECE7;
+  --text:#1a1a18;--text2:#5F5E5A;--text3:#888780;
+  --bg:#fff;--bg2:#F7F6F2;--bg3:#EFEDE8;
+  --border:rgba(0,0,0,0.12);--border2:rgba(0,0,0,0.22);
+  --r:10px;--rs:6px;
+  --font:-apple-system,'SF Pro Text','Segoe UI',sans-serif;
+}
+@media(prefers-color-scheme:dark){:root{
+  --text:#f0ede8;--text2:#b4b2a9;--text3:#888780;
+  --bg:#1c1b18;--bg2:#252420;--bg3:#2e2c28;
+  --border:rgba(255,255,255,0.10);--border2:rgba(255,255,255,0.20);
+  --green-bg:#04342C;--green-dk:#9FE1CB;
+  --blue-bg:#042C53;--blue-dk:#B5D4F4;
+  --purple-bg:#26215C;--coral-bg:#4A1B0C;
+}}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:var(--font);background:var(--bg3);color:var(--text);min-height:100vh}
+
+/* Mode picker */
+#mode-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;gap:1.25rem}
+#mode-screen h1{font-size:24px;font-weight:700;letter-spacing:-.5px;text-align:center;line-height:1.3}
+#mode-screen .sub{font-size:13px;color:var(--text2);text-align:center}
+.mcard{width:100%;max-width:320px;padding:16px 18px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg);cursor:pointer;display:flex;align-items:center;gap:14px;text-align:left}
+.mcard:active{opacity:.75}
+.mcard.primary{border:2px solid var(--blue)}
+.micon{font-size:28px;flex-shrink:0}
+.mcard h2{font-size:15px;font-weight:600;color:var(--text);margin-bottom:3px}
+.mcard p{font-size:12px;color:var(--text2);margin:0}
+
+/* App shell */
+.app{max-width:460px;margin:0 auto;padding-bottom:2rem;display:none}
+.app.on{display:block}
+.hdr{background:var(--bg);border-bottom:1px solid var(--border);padding:1rem 1rem .85rem;text-align:center;position:sticky;top:0;z-index:20}
+.hdr h1{font-size:17px;font-weight:700;letter-spacing:-.3px}
+.hdr p{font-size:11px;color:var(--text2);margin-top:2px}
+.hdr-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-top:5px;text-transform:uppercase;letter-spacing:.05em}
+.hdr-badge.runner{background:var(--blue-bg);color:var(--blue)}
+.hdr-badge.spec{background:var(--green-bg);color:var(--green-dk)}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+.stat{background:var(--bg);padding:10px 6px;text-align:center}
+.slbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+.sval{font-size:16px;font-weight:700;color:var(--text)}
+.sval.blue{color:var(--blue)}
+
+/* Time windows */
+.tw-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 1rem}
+.tw-title{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.tw-row{display:flex;justify-content:space-between;font-size:13px;padding:2px 0}
+.tw-lbl{color:var(--text2)}
+.tw-val{font-weight:600;color:var(--blue)}
+.tw-val.est{color:var(--text3);font-weight:400}
+
+/* Share bar */
+.share-bar{background:var(--blue-bg);border-bottom:1px solid rgba(24,95,165,.2);padding:10px 1rem;display:flex;align-items:center;gap:10px}
+.share-bar p{font-size:12px;color:var(--blue-dk);flex:1;line-height:1.4}
+.share-btn{flex-shrink:0;font-size:12px;font-weight:700;padding:8px 14px;border-radius:var(--rs);border:none;background:var(--blue);color:#fff;cursor:pointer;white-space:nowrap}
+.share-btn:active{opacity:.8}
+
+/* Spectator refresh bar */
+.refresh-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 1rem;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.refresh-bar p{font-size:12px;color:var(--text2)}
+.refresh-btn{font-size:12px;padding:5px 12px;border-radius:var(--rs);border:1px solid var(--border2);background:var(--bg);color:var(--text);cursor:pointer}
+
+/* Legend */
+.legend{display:flex;gap:10px;justify-content:center;padding:8px 1rem;flex-wrap:wrap;background:var(--bg);border-bottom:1px solid var(--border)}
+.li{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2)}
+.ldot{width:3px;height:12px;border-radius:2px}
+
+/* Section label */
+.sec{padding:12px 1rem 6px}
+.seclbl{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+
+/* Checkpoint list */
+.cplist{padding:0 1rem;display:flex;flex-direction:column;gap:6px}
+.cp{background:var(--bg);border-radius:var(--r);border:1px solid var(--border);overflow:hidden;transition:opacity .2s}
+.cp.done{opacity:.35}
+.cp.nxt{border:1.5px solid var(--blue)}
+.cp.meet{border-left:3px solid var(--green)}
+.cp.hotel{border-left:3px solid var(--purple)}
+.cp.fin{border-left:3px solid var(--coral)}
+.cp-main{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;user-select:none}
+.cpn{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:var(--bg3);color:var(--text2)}
+.cpn.dn{background:var(--green-bg);color:var(--green-dk)}
+.cpn.nx{background:var(--blue-bg);color:var(--blue-dk)}
+.cpn.mt{background:var(--green-bg);color:var(--green-dk)}
+.cpn.ht{background:var(--purple-bg);color:var(--purple)}
+.cpn.ft{background:var(--coral-bg);color:var(--coral)}
+.cpb{flex:1;min-width:0}
+.cpname{font-size:13px;font-weight:500;color:var(--text);line-height:1.3}
+.cpmeta{font-size:11px;color:var(--text2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cpeta{font-size:11px;color:var(--blue);font-weight:600;margin-top:1px}
+.cpeta.est{color:var(--text3);font-weight:400}
+.cparr{font-size:11px;color:var(--green-dk);margin-top:1px}
+.cpright{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
+.abtn{font-size:13px;font-weight:600;padding:7px 14px;border-radius:var(--rs);border:none;background:var(--blue);color:#fff;cursor:pointer;white-space:nowrap}
+.abtn:active{opacity:.8;transform:scale(.97)}
+.undobtn{font-size:12px;font-weight:500;padding:5px 10px;border-radius:var(--rs);border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer}
+.exbtn{font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;padding:2px 4px}
+
+/* Detail panel */
+.cp-det{overflow:hidden;max-height:0;transition:max-height .28s ease}
+.cp-det.open{max-height:400px}
+.cp-det-in{border-top:1px solid var(--border);padding:10px 12px}
+.sv-wrap{position:relative;width:100%;height:160px;border-radius:var(--rs);overflow:hidden;background:var(--bg3);border:1px solid var(--border);margin-bottom:8px}
+.sv-wrap img{width:100%;height:100%;object-fit:cover;display:block}
+.sv-ph{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:12px;color:var(--text3);background:var(--bg3)}
+.daddr{font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:7px}
+.dbadges{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px}
+.badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px}
+.b-drop{background:var(--blue-bg);color:var(--blue)}
+.b-relay{background:var(--purple-bg);color:var(--purple)}
+.b-manned{background:var(--green-bg);color:var(--green-dk)}
+.dfood{font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:8px}
+.dfood b{color:var(--text);font-weight:600}
+.dlinks{display:flex;gap:6px;flex-wrap:wrap}
+.dlink{font-size:12px;padding:6px 12px;border-radius:var(--rs);border:1px solid var(--border2);background:var(--bg2);color:var(--text);text-decoration:none;font-weight:500}
+.dlink:active{opacity:.7}
+
+/* Bottom */
+.pnote{margin:1rem;padding:10px 12px;background:var(--bg);border-radius:var(--r);border:1px solid var(--border);font-size:12px;color:var(--text2);line-height:1.7;text-align:center}
+.hotels{margin:0 1rem 1rem}
+.hcard{background:var(--bg);border:1px solid var(--border);border-left:3px solid var(--purple);border-radius:var(--r);padding:10px 12px;margin-bottom:6px}
+.hlbl{font-size:10px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+.hname{font-size:13px;font-weight:500;color:var(--text)}
+.haddr{font-size:12px;color:var(--text2);margin-top:1px}
+.rstbtn{display:block;width:calc(100% - 2rem);margin:0 1rem;padding:11px;border-radius:var(--r);border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:13px;cursor:pointer}
+.rstbtn:active{opacity:.7}
+
+/* Finish */
+.finbanner{text-align:center;padding:3rem 1rem}
+.finbanner h2{font-size:22px;font-weight:700;margin:10px 0 5px}
+.finbanner p{font-size:14px;color:var(--text2)}
+
+/* Toast */
+#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(12px);background:#1a1a18;color:#fff;font-size:13px;padding:10px 20px;border-radius:20px;opacity:0;transition:all .22s;pointer-events:none;z-index:999;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- Mode picker -->
+<div id="mode-screen">
+  <h1>OBX 100<br>Race Tracker</h1>
+  <p class="sub">Corolla → Hatteras · Sat Mar 21, 5:30 AM</p>
+  <div class="mcard primary" onclick="setMode('runner')">
+    <div class="micon">🏃</div>
+    <div><h2>Runner view</h2><p>Check in at aid stations · share link with crew</p></div>
+  </div>
+  <div class="mcard" onclick="setMode('spectator')">
+    <div class="micon">👀</div>
+    <div><h2>Spectator view</h2><p>Follow along · see live ETAs and projections</p></div>
+  </div>
+</div>
+
+<!-- Runner app -->
+<div class="app" id="runner-app">
+  <div class="hdr">
+    <h1>OBX 100 — Race Tracker</h1>
+    <p>Corolla → Hatteras · 100 miles · Mar 21, 5:30 AM</p>
+    <span class="hdr-badge runner">Runner</span>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="slbl">Miles done</div><div class="sval blue" id="r-miles">0</div></div>
+    <div class="stat"><div class="slbl">Pace (last leg)</div><div class="sval" id="r-pace">—</div></div>
+    <div class="stat"><div class="slbl">Time running</div><div class="sval" id="r-time">—</div></div>
+  </div>
+  <div class="tw-bar"><div class="tw-title">Time window projections</div><div id="r-tw"></div></div>
+  <div class="share-bar">
+    <p id="share-status">Check in at the start line to generate a crew share link.</p>
+    <button class="share-btn" id="share-btn" onclick="copyShareLink()" style="display:none">📋 Copy link</button>
+  </div>
+  <div class="legend">
+    <div class="li"><div class="ldot" style="background:var(--green)"></div> Meet-up</div>
+    <div class="li"><div class="ldot" style="background:var(--purple)"></div> Hotel</div>
+    <div class="li"><div class="ldot" style="background:var(--coral)"></div> Finish</div>
+  </div>
+  <div class="sec"><div class="seclbl">Checkpoints</div></div>
+  <div class="cplist" id="r-cplist"></div>
+  <div class="pnote" id="r-pnote">Tap "Start" at the start line at 5:30 AM · estimated times shown</div>
+  <button class="rstbtn" onclick="resetRace()">Reset race</button>
+</div>
+
+<!-- Spectator app -->
+<div class="app" id="spectator-app">
+  <div class="hdr">
+    <h1>OBX 100 — Race Tracker</h1>
+    <p>Corolla → Hatteras · 100 miles · Mar 21, 5:30 AM</p>
+    <span class="hdr-badge spec">Following along</span>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="slbl">Miles done</div><div class="sval blue" id="s-miles">0</div></div>
+    <div class="stat"><div class="slbl">Pace (last leg)</div><div class="sval" id="s-pace">—</div></div>
+    <div class="stat"><div class="slbl">Time running</div><div class="sval" id="s-time">—</div></div>
+  </div>
+  <div class="tw-bar"><div class="tw-title">Time window projections</div><div id="s-tw"></div></div>
+  <div class="refresh-bar">
+    <p id="refresh-status">Open the link your runner sends after each check-in.</p>
+    <button class="refresh-btn" onclick="location.reload()">Refresh</button>
+  </div>
+  <div class="legend">
+    <div class="li"><div class="ldot" style="background:var(--green)"></div> Meet-up</div>
+    <div class="li"><div class="ldot" style="background:var(--purple)"></div> Hotel</div>
+    <div class="li"><div class="ldot" style="background:var(--coral)"></div> Finish</div>
+  </div>
+  <div class="sec"><div class="seclbl">Checkpoints</div></div>
+  <div class="cplist" id="s-cplist"></div>
+  <div class="pnote" id="s-pnote">Waiting for first check-in from your runner...</div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+var CPS=[
+  {id:0,mile:0,lbl:"Start",name:"Starting line — Corolla",type:"start",addr:"1160 Village Lane, Corolla, NC",coords:"36.3781,-75.8301",food:null,drop:null,relay:false,manned:true,note:null},
+  {id:21,mile:9,lbl:"Hotel",name:"Hampton Inn Corolla",type:"meet",addr:"333 Audubon Dr, Corolla, NC 27927",coords:"36.2952,-75.8048",food:null,drop:null,relay:false,manned:false,note:"Friday night hotel · pre-race"},
+  {id:1,mile:10.2,lbl:"AS 1",name:"Currituck County Beach Access",type:"aid",addr:"Currituck County Southern Public Beach Access, Corolla, NC",coords:"36.27835,-75.79596",food:"water, Tailwind, grapes, trail mix, fig bars, coffee, Huma gels",drop:null,relay:true,manned:true,note:null},
+  {id:2,mile:14.4,lbl:"AS 2",name:"The Paper Canoe, Duck",type:"aid",addr:"Sidewalk across from The Paper Canoe, Duck, NC",coords:"36.222076,-75.770962",food:"water, Tailwind, Huma gels",drop:null,relay:false,manned:false,note:null},
+  {id:3,mile:18.9,lbl:"AS 3",name:"Aqua Spa Parking, Duck",type:"aid",addr:"1167 Duck Rd, Duck, NC 27949",coords:"36.16098,-75.75194",food:"water, Tailwind, Coke, ginger ale, bacon, gummy bears, popcorn, bananas, salt tabs, Huma gels",drop:"Drop Bag #1",relay:false,manned:true,note:null},
+  {id:4,mile:24.9,lbl:"AS 4",name:"E. Ekner St. Beach Access, Kitty Hawk",type:"meet",addr:"N. Virginia Dare Trl at E. Ekner St, Kitty Hawk, NC",coords:"36.08749,-75.70342",food:"water, Tailwind, Huma gels",drop:null,relay:false,manned:false,note:"Mile 25 meet-up"},
+  {id:5,mile:29.4,lbl:"AS 5",name:"Asheville Dr Beach Access, Kill Devil Hills",type:"aid",addr:"N. Virginia Dare Trl at Asheville Dr, Kill Devil Hills, NC",coords:"36.02355,-75.66294",food:"water, Tailwind, oranges, Oreos, Coke, ginger ale, pickles, salt tabs, Huma gels, PB&J sandwich",drop:null,relay:true,manned:true,note:null},
+  {id:6,mile:35.4,lbl:"AS 6",name:"E Dove St, Nags Head",type:"aid",addr:"E Dove St at Virginia Dare Trl, Nags Head, NC",coords:"35.94816,-75.61893",food:"water, Tailwind, Huma gels",drop:null,relay:false,manned:false,note:null},
+  {id:7,mile:38.6,lbl:"AS 7",name:"Jenette's Pier, Nags Head",type:"aid",addr:"7223 S Virginia Dare Trail, Nags Head, NC 27959",coords:"35.91007,-75.59553",food:"water, Tailwind, Coke, ginger ale, pierogi & salt, trail mix, fig bars, gummy bears, popcorn, salt tabs, Huma gels",drop:null,relay:false,manned:true,note:null},
+  {id:8,mile:44.6,lbl:"AS 8",name:"Coquina Beach Parking Lot",type:"meet",addr:"Coquina Beach Parking Lot, NC Hwy 12, Nags Head, NC",coords:"35.829377,-75.558121",food:"water, Tailwind, Coke, ginger ale, hummus wraps, hot dogs, oranges, potato chips, salt tabs, Huma gels",drop:"Drop Bag #2",relay:false,manned:true,note:"Mile 50 meet-up"},
+  {id:9,mile:50.1,lbl:"AS 9",name:"Lifeboat Station Rd, Rodanthe",type:"aid",addr:"Lifeboat Station Rd at NC 12, Rodanthe, NC",coords:"35.76497,-75.52013",food:"water, Tailwind, Coke, ginger ale, chicken & veggie broth, wraps (meat & hummus), gummy bears, pickles, salt tabs, Huma gels",drop:null,relay:true,manned:true,note:null},
+  {id:10,mile:56.7,lbl:"AS 10",name:"Pea Island Wildlife Refuge",type:"aid",addr:"Pea Island Wildlife Refuge, New Inlet Parking Area, NC",coords:"35.67524,-75.48084",food:"water, Tailwind, Coke, ginger ale, pizza, pretzels, melon, salt tabs, Huma gels",drop:null,relay:true,manned:true,note:null},
+  {id:11,mile:62.7,lbl:"AS 11",name:"Town of Rodanthe, Jughandle Bridge",type:"aid",addr:"23532 NC Hwy 12, off Jughandle Bridge, Rodanthe, NC",coords:"35.597232,-75.466872",food:"water, Tailwind, Coke, ginger ale, quesadilla, chicken/veggie broth, oranges, salt tabs, Huma gels",drop:"Drop Bag #3",relay:false,manned:true,note:null},
+  {id:12,mile:66.8,lbl:"AS 12",name:"Clarks Bethel Methodist Church, Salvo",type:"aid",addr:"27775 NC Hwy 12, Salvo, NC",coords:"35.536870,-75.473377",food:"water, Tailwind, Coke, ginger ale, pickles, chicken & veggie broth, bananas, candy, pierogi & salt, salt tabs, Huma gels",drop:null,relay:true,manned:true,note:null},
+  {id:13,mile:72,lbl:"AS 13",name:"Avon Beach Parking Lot",type:"aid",addr:"Beach Parking Lot on Hwy 12, south of Off Road Ramp 27, Avon, NC",coords:"35.458199,-75.484482",food:"water, Tailwind, Coke, ginger ale, bacon, gummy bears, grapes, PB&J, chicken & veggie broth, salt tabs, Huma gels",drop:null,relay:false,manned:true,note:null},
+  {id:14,mile:78.3,lbl:"AS 14",name:"Ocean Air Sports, Avon",type:"aid",addr:"39450 NC Hwy 12, Avon, NC",coords:"35.369417,-75.498841",food:"water, Tailwind, Coke, ginger ale, chicken & veggie broth, vegan chili, oranges, potato chips, salt tabs, Huma gels",drop:null,relay:true,manned:true,note:null},
+  {id:15,mile:82.5,lbl:"AS 15",name:"Off Road Beach Access, Avon",type:"aid",addr:"1 Way Rd, Avon, NC",coords:"35.308496,-75.511685",food:"water, Tailwind, Huma gels",drop:null,relay:false,manned:false,note:null},
+  {id:16,mile:86.1,lbl:"AS 16",name:"Hatteras Park Entrance, Buxton",type:"hotel",addr:"NC 12 at Lighthouse Rd, Buxton, NC",coords:"35.26454,-75.52499",food:"water, Tailwind, Coke, ginger ale, coffee, cup o'noodles, Oreos, gummy bears, pretzels, pickles, hummus wraps, chicken & veggie broth, salt tabs, Huma gels",drop:"Drop Bag #4",relay:false,manned:true,note:"Near Hatteras Island Inn"},
+  {id:17,mile:88,lbl:"AS 17",name:"Hatteras Park Exit, Buxton",type:"aid",addr:"Exit of Hatteras Park, Lighthouse Rd, Buxton, NC",coords:"35.26454,-75.52499",food:"water, Tailwind, Coke, ginger ale, coffee, cup o'noodles, Oreos, gummy bears, pretzels, pickles, hummus wraps, chicken & veggie broth, salt tabs, Huma gels",drop:null,relay:false,manned:true,note:null},
+  {id:22,mile:88,lbl:"Hotel",name:"Hatteras Island Inn",type:"meet",addr:"46745 Hwy 12, Buxton, NC 27920",coords:"35.2645,-75.5250",food:null,drop:null,relay:false,manned:false,note:"Sat & Sun hotel · post-race base camp"},
+  {id:18,mile:91.8,lbl:"AS 18",name:"Dare County Health Dept, Frisco",type:"aid",addr:"50344 NC Hwy 12, Frisco, NC",coords:"35.260907,-75.580125",food:"water, Tailwind, Huma gels",drop:null,relay:false,manned:false,note:null},
+  {id:19,mile:95.5,lbl:"AS 19",name:"Frisco Woods Campground",type:"aid",addr:"53124 NC Hwy 12, Frisco, NC",coords:"35.239380,-75.619933",food:"water, Tailwind, Coke, ginger ale, coffee, trail mix, chicken & veggie broth, grits, candy, salt tabs, Huma gels",drop:null,relay:true,manned:true,note:null},
+  {id:20,mile:100,lbl:"Finish",name:"Finish line — Hatteras",type:"finish",addr:"58848 Marina Way, Hatteras, NC",coords:"35.2227,-75.6917",food:null,drop:null,relay:false,manned:true,note:null}
+];
+
+var TIME_WINS=[{lbl:"7:30 PM",h:19,m:30},{lbl:"10:00 PM",h:22,m:0}];
+var RACE_START=new Date(2026,2,21,5,30,0);
+
+function phasePace(mile){
+  if(mile<=25)return(12*60+30)*1000;
+  if(mile<=50)return(13*60+30)*1000;
+  if(mile<=75)return(15*60+30)*1000;
+  return 18*60*1000;
+}
+function estArrival(targetMile){
+  var ms=RACE_START.getTime(),pos=0,step=0.5;
+  while(pos<targetMile){var seg=Math.min(step,targetMile-pos);ms+=seg*phasePace(pos+seg/2);pos+=seg;}
+  return ms;
+}
+var EST={};
+CPS.forEach(function(cp){EST[cp.id]=estArrival(cp.mile);});
+
+var arrivals={},expanded={},MODE='';
+
+function encodeArrivals(){
+  return Object.keys(arrivals).sort(function(a,b){return a-b;}).map(function(k){return k+':'+arrivals[k];}).join(',');
+}
+function decodeArrivals(str){
+  var out={};
+  if(!str)return out;
+  str.split(',').forEach(function(p){
+    var pts=p.split(':');
+    if(pts.length===2){var id=parseInt(pts[0]),ts=parseInt(pts[1]);if(!isNaN(id)&&!isNaN(ts))out[id]=ts;}
+  });
+  return out;
+}
+function buildShareURL(){
+  return location.href.split('#')[0]+'#s='+encodeURIComponent(encodeArrivals());
+}
+
+function ft(ts){var d=new Date(ts),h=d.getHours(),m=d.getMinutes(),ap=h>=12?'PM':'AM';h=h%12||12;return h+':'+(m<10?'0':'')+m+' '+ap;}
+function fd(ms){var t=Math.round(ms/60000),h=Math.floor(t/60),m=t%60;return h?h+'h '+m+'m':m+'m';}
+function fp(mpm){if(!mpm||mpm<=0)return'—';var s=Math.round(mpm/1000),mn=Math.floor(s/60),sc=s%60;return mn+':'+(sc<10?'0':'')+sc+'/mi';}
+
+function getLastIdx(){var ks=Object.keys(arrivals).map(Number).filter(function(k){return!isNaN(k);});return ks.length?Math.max.apply(null,ks):-1;}
+function getLastPace(){
+  var ks=Object.keys(arrivals).map(Number).filter(function(k){return!isNaN(k);}).sort(function(a,b){return a-b;});
+  if(ks.length<2)return null;
+  var l=ks[ks.length-1],p=ks[ks.length-2],mi=CPS.find(function(c){return c.id===l;}).mile-CPS.find(function(c){return c.id===p;}).mile;
+  if(mi<=0)return null;
+  return(arrivals[l]-arrivals[p])/mi;
+}
+function liveETA(fromId,toMile){
+  var pace=getLastPace();if(!pace)return null;
+  var fromCp=CPS.find(function(c){return c.id===fromId;});
+  var mi=toMile-fromCp.mile;if(mi<=0)return null;
+  return arrivals[fromId]+mi*pace;
+}
+function displayETA(cp){
+  var last=getLastIdx(),pace=getLastPace();
+  if(pace&&last>=0){
+    var lastCp=CPS.find(function(c){return c.id===last;});
+    if(lastCp&&lastCp.mile<cp.mile){var e=liveETA(last,cp.mile);if(e)return{ts:e,est:false};}
+  }
+  return{ts:EST[cp.id],est:true};
+}
+
+function toast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show');},2400);
+}
+
+function markArrived(id){arrivals[id]=Date.now();saveLocal();render();}
+function undoLast(){
+  var ks=Object.keys(arrivals).map(Number);
+  if(!ks.length)return;
+  delete arrivals[Math.max.apply(null,ks)];
+  saveLocal();render();
+}
+function toggleExp(id){expanded[id]=!expanded[id];render();}
+function resetRace(){if(confirm('Reset all check-ins?')){arrivals={};expanded={};saveLocal();render();}}
+function saveLocal(){try{localStorage.setItem('obx100_arrivals',encodeArrivals());}catch(e){}}
+
+function copyShareLink(){
+  var url=buildShareURL();
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(function(){toast('Link copied! Send it to your crew \u2013 they just tap it to open spectator view.');});
+  } else {
+    var ta=document.createElement('textarea');ta.value=url;document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');toast('Link copied!');}catch(e){}
+    document.body.removeChild(ta);
+  }
+}
+
+function mapEmbedUrl(coords){var p=coords.split(','),lat=parseFloat(p[0].trim()),lng=parseFloat(p[1].trim()),d=0.003;return'https://www.openstreetmap.org/export/embed.html?bbox='+(lng-d)+','+(lat-d)+','+(lng+d)+','+(lat+d)+'&layer=mapnik&marker='+lat+','+lng;}
+
+function renderTW(elId){
+  var el=document.getElementById(elId);el.innerHTML='';
+  var last=getLastIdx(),pace=getLastPace();
+  TIME_WINS.forEach(function(tw){
+    var row=document.createElement('div');row.className='tw-row';
+    var wt=new Date(RACE_START);wt.setHours(tw.h,tw.m,0,0);
+    if(wt.getTime()<RACE_START.getTime())wt.setDate(wt.getDate()+1);
+    if(pace&&last>=0){
+      var lt=arrivals[last],lc=CPS.find(function(c){return c.id===last;});
+      if(wt.getTime()<=lt){
+        var m=Math.round((lc.mile-(lt-wt.getTime())/pace)*10)/10;
+        m=Math.max(0,Math.min(100,m));
+        row.innerHTML='<span class="tw-lbl">At '+tw.lbl+'</span><span class="tw-val">~mile '+m+' ✓</span>';
+      } else {
+        var mu=(wt.getTime()-lt)/pace,pm=Math.round((lc.mile+mu)*10)/10;
+        pm=Math.max(0,Math.min(100,pm));
+        row.innerHTML='<span class="tw-lbl">At '+tw.lbl+'</span><span class="tw-val">~mile '+pm+'</span>';
+      }
+    } else {
+      var msSS=wt.getTime()-RACE_START.getTime(),pMs=0,pM=0,step=0.5;
+      while(pM<100){var sg=step,sgMs=sg*phasePace(pM+sg/2);if(pMs+sgMs>msSS){pM+=(msSS-pMs)/sgMs*sg;break;}pMs+=sgMs;pM+=sg;}
+      pM=Math.round(pM*10)/10;
+      row.innerHTML='<span class="tw-lbl">At '+tw.lbl+'</span><span class="tw-val est">~mile '+pM+' <span style="font-size:10px">(est.)</span></span>';
+    }
+    el.appendChild(row);
+  });
+}
+
+function renderApp(prefix){
+  var isRunner=(prefix==='r');
+  var last=getLastIdx();
+  // Find next numeric checkpoint id after last
+  var numericCPs=CPS.filter(function(c){return typeof c.id==='number';});
+  var lastCpObj=numericCPs.find(function(c){return c.id===last;});
+  var lastCpNumIdx=lastCpObj?numericCPs.indexOf(lastCpObj):-1;
+  var nxtCp=lastCpNumIdx>=0&&lastCpNumIdx+1<numericCPs.length?numericCPs[lastCpNumIdx+1]:null;
+  var nxtId=last<0?0:(nxtCp?nxtCp.id:-1);
+  var pace=getLastPace();
+
+  var lastMile=last>=0&&lastCpObj?lastCpObj.mile:0;
+  document.getElementById(prefix+'-miles').textContent=lastMile;
+  document.getElementById(prefix+'-pace').textContent=pace?fp(pace):'—';
+  document.getElementById(prefix+'-time').textContent=(last>0&&arrivals[0])?fd(arrivals[last]-arrivals[0]):'—';
+  renderTW(prefix+'-tw');
+
+  if(isRunner){
+    var hasData=Object.keys(arrivals).length>0;
+    document.getElementById('share-btn').style.display=hasData?'':'none';
+    document.getElementById('share-status').textContent=hasData
+      ?'After each check-in, copy this link and send it to your crew.'
+      :'Check in at the start line to generate a crew share link.';
+  }
+
+  var list=document.getElementById(prefix+'-cplist');
+  list.innerHTML='';
+
+  if(last===20){
+    list.innerHTML='<div class="finbanner"><div style="font-size:48px">🏁</div><h2>He finished!</h2><p>Congratulations on completing the OBX 100!</p></div>';
+    document.getElementById(prefix+'-pnote').textContent='Race complete! What an incredible achievement.';
+    return;
+  }
+
+  CPS.forEach(function(cp,i){
+    // Landmark cards (hotels) — display only, no check-in
+    if(cp.type==='landmark'){
+      var div=document.createElement('div');
+      div.className='cp hotel';
+      div.style.cursor='default';
+      var dH='https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(cp.addr);
+      div.innerHTML=
+        '<div class="cp-main" style="cursor:default">'
+        +'<div class="cpn ht">🏨</div>'
+        +'<div class="cpb">'
+        +'<div class="cpname">'+cp.name+'</div>'
+        +'<div class="cpmeta">Mile '+cp.mile+' · '+cp.note+'</div>'
+        +'</div>'
+        +'<div class="cpright"><a class="dlink" href="'+dH+'" target="_blank" style="font-size:11px;padding:4px 9px">Directions ↗</a></div>'
+        +'</div>';
+      list.appendChild(div);
+      return;
+    }
+
+    var arrived=arrivals[cp.id]!==undefined;
+    var isNext=cp.id===nxtId,isFirst=cp.id===0&&last<0,exp=!!expanded[cp.id];
+    var div=document.createElement('div');div.className='cp';
+    if(arrived&&cp.id!==last)div.classList.add('done');
+    if(isNext)div.classList.add('nxt');
+    if(cp.type==='meet')div.classList.add('meet');
+    if(cp.type==='hotel')div.classList.add('hotel');
+    if(cp.type==='finish')div.classList.add('fin');
+
+    var nc='cpn',nt=arrived?'✓':(cp.id===0?'⚑':(cp.type==='finish'?'🏁':cp.id));
+    if(arrived)nc+=' dn';
+    else if(isNext)nc+=' nx';
+    else if(cp.type==='meet')nc+=' mt';
+    else if(cp.type==='hotel')nc+=' ht';
+    else if(cp.type==='finish')nc+=' ft';
+
+    var meta='Mile '+cp.mile+(cp.note?' · '+cp.note:'');
+    var etaH='';
+    if(arrived){
+      etaH='<div class="cparr">arrived '+ft(arrivals[cp.id])+'</div>';
+    } else {
+      var eo=displayETA(cp);
+      etaH='<div class="cpeta'+(eo.est?' est':'')+'">'+( eo.est?'est. ':'ETA ')+ft(eo.ts)+'</div>';
+    }
+
+    var actH='';
+    if(isRunner){
+      if(!arrived&&(isFirst||last>=0)){
+        actH='<button class="abtn" onclick="event.stopPropagation();markArrived('+cp.id+')">'+(cp.id===0?'Start':'Arrived')+'</button>';
+      } else if(!arrived&&cp.id===0){
+        actH='<button class="abtn" onclick="event.stopPropagation();markArrived(0)">Start</button>';
+      } else if(arrived&&cp.id===last&&cp.id>0){
+        actH='<button class="undobtn" onclick="event.stopPropagation();undoLast()">Undo</button>';
+      }
+    }
+
+    var bdg='';
+    if(cp.drop)bdg+='<span class="badge b-drop">'+cp.drop+'</span>';
+    if(cp.relay)bdg+='<span class="badge b-relay">Relay</span>';
+    if(cp.manned)bdg+='<span class="badge b-manned">Manned</span>';
+    var foodH=cp.food?'<div class="dfood"><b>Aid:</b> '+cp.food+'</div>':'';
+    var svH='<div class="sv-wrap"><iframe src="'+mapEmbedUrl(cp.coords)+'" style="width:100%;height:100%;border:none;display:block" loading="lazy" title="Map of '+cp.name+'"></iframe></div>';
+    var mH='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(cp.addr);
+    var dH='https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(cp.addr);
+    var detH='<div class="cp-det'+(exp?' open':'')+'"><div class="cp-det-in">'+svH+'<div class="daddr">'+cp.addr+'</div>'+(bdg?'<div class="dbadges">'+bdg+'</div>':'')+foodH+'<div class="dlinks"><a class="dlink" href="'+mH+'" target="_blank">Maps ↗</a><a class="dlink" href="'+dH+'" target="_blank">Directions ↗</a></div></div></div>';
+
+    div.innerHTML=
+      '<div class="cp-main" onclick="toggleExp(\''+cp.id+'\')">'
+      +'<div class="'+nc+'">'+nt+'</div>'
+      +'<div class="cpb"><div class="cpname">'+cp.lbl+' — '+cp.name+'</div>'
+      +'<div class="cpmeta">'+meta+'</div>'+etaH+'</div>'
+      +'<div class="cpright">'+actH
+      +'<button class="exbtn" onclick="event.stopPropagation();toggleExp(\''+cp.id+'\')">'+(exp?'▲':'▼')+'</button>'
+      +'</div></div>'+detH;
+    list.appendChild(div);
+  });
+
+  var pnoteEl=document.getElementById(prefix+'-pnote');
+  if(pnoteEl)pnoteEl.textContent=(pace&&last>=0)?'Live pace: '+fp(pace)+' · ETAs update after each check-in · all stops optional':(last>=0?'Pace calculates after two check-ins — estimated times shown':(isRunner?'Tap "Start" at the start line at 5:30 AM · all stops optional':'Waiting for first check-in — estimated arrival times shown'));
+}
+
+function render(){
+  if(MODE==='runner')renderApp('r');
+  else if(MODE==='spectator')renderApp('s');
+}
+
+function setMode(mode){
+  MODE=mode;
+  document.getElementById('mode-screen').style.display='none';
+  if(mode==='runner'){
+    try{var s=localStorage.getItem('obx100_arrivals');if(s)arrivals=decodeArrivals(s);}catch(e){}
+    document.getElementById('runner-app').classList.add('on');
+  } else {
+    document.getElementById('spectator-app').classList.add('on');
+    var ks=Object.keys(arrivals).map(Number);
+    if(ks.length){
+      var lastTs=arrivals[Math.max.apply(null,ks)];
+      document.getElementById('refresh-status').textContent='Last updated '+ft(lastTs)+' · Open new link from runner for updates';
+    }
+  }
+  render();
+}
+
+// Boot
+(function(){
+  var hash=location.hash;
+  if(hash&&hash.indexOf('#s=')===0){
+    arrivals=decodeArrivals(decodeURIComponent(hash.slice(3)));
+    setMode('spectator');
+  }
+})();
+</script>
+</body>
+</html>
